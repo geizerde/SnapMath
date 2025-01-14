@@ -249,5 +249,4 @@ print(conf_matrix)
 2. [Habr: Метрики классификации](https://habr.com/ru/articles/661119/)
 3. [F1-Score Glossary](https://www.ultralytics.com/ru/glossary/f1-score)
 4. [Видеообзор на YouTube](https://www.youtube.com/watch?v=-jplpYLrcdM)
-5. [ChatGPT](https://chatgpt.com)
 
