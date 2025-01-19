@@ -550,3 +550,13 @@ print("Модель сохранена в файл 'svc_model.pkl'")
 - [Multinomial Naïve Bayes (docs)](https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html#sklearn.naive_bayes.MultinomialNB)  
 - [Compute Class Weight (docs)](https://scikit-learn.org/stable/modules/generated/sklearn.utils.class_weight.compute_class_weight.html)  
 - [Train Test Split (docs)](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html)
+
+# Обучение. SVC.
+
+В качестве второй модели, для попытки получения результата получше, мы выбрали модель, которая будет обучаться на основе метода опорных векторов (SVC). В качестве ядра для метода мы наивно выбрали радиальную базисную функцию (RBF), надеясь, что упоминание о том, что она работает дольше линейной, не означает обучение модели длительностью в 10 часов и высчитывание метрик в *n* часов. Мы решили, что, поскольку RBF-ядро должно более качественно находить зависимости и лучше работает с большим количеством признаков, это наш вариант:
+
+```python
+model = SVC(kernel='rbf', C=1.0, gamma='scale', random_state=42)
+
+model.fit(X_train, y_train)
+```
