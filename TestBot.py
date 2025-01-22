@@ -7,6 +7,8 @@ import cv2
 import numpy as np
 from typing import List, Any
 import joblib
+import os
+
 
 API_TOKEN = "7642880568:AAGYiiI_GoTTx-aq5V0iWRXrK-56xhp1m_Q"
 MODEL = joblib.load('./models/rfc_model_2000_pca.pkl')
@@ -84,15 +86,15 @@ async def start_handler(message: Message):
 
 # Хэндлер для обработки фотографий
 async def handle_photo(message: Message, bot: Bot):
+    # Получаем самое большое изображение
+    photo = message.photo[-1]
+    # Скачиваем файл
+    file = await bot.download(photo)
+    file_path = f"./downloads/{photo.file_id}.jpg"  # Можно поменять путь и название файла
+
+
     try:
-        # Получаем самое большое изображение
-        photo = message.photo[-1]
-        # Скачиваем файл
-        file = await bot.download(photo)
 
-        file_path = f"./downloads/{photo.file_id}.jpg"  # Можно поменять путь и название файла
-
-        # Сохраняем файл
         with open(file_path, "wb") as f:
             f.write(file.read())
             # Передаём путь временного файла в функцию распознавания
@@ -102,6 +104,12 @@ async def handle_photo(message: Message, bot: Bot):
     except Exception as e:
         logging.error(f"Ошибка при обработке изображения: {e}")
         await message.answer("Произошла ошибка при обработке фото.")
+    finally:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Файл {file_path} успешно удалён.")
+        elif file_path:
+            print(f"Файл {file_path} не найден для удаления.")
 
 # Основная асинхронная функция
 async def main():
