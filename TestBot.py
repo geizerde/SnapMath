@@ -1,17 +1,21 @@
 import logging
 import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message
-from aiogram.filters import Command  # Новый способ регистрации команды
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.filters import Command
 import cv2
 import numpy as np
 from typing import List, Any
 import joblib
 import os
 
-
 API_TOKEN = "7642880568:AAGYiiI_GoTTx-aq5V0iWRXrK-56xhp1m_Q"
-MODEL = joblib.load('./models/rfc_model_2000_pca.pkl')
+MODELS = {
+    "rfc": joblib.load('./models/rfc_model_2000_pca.pkl'),
+    "svc": joblib.load('./models/svc_model_2000_pca.pkl'),
+    "nb": joblib.load('./models/multinomial_nb_2000_model_without_weight.pkl')
+}
+SELECTED_MODEL = "rfc"
 
 logging.basicConfig(level=logging.INFO)
 
@@ -50,7 +54,6 @@ def letters_extract(image_file: str, out_size=28) -> List[Any]:
 
     return letters
 
-
 def predict_symbol(img, model):
     img_flatten = img.flatten()
 
@@ -62,8 +65,7 @@ def predict_symbol(img, model):
 
     return model.predict(img_reduced)
 
-
-def get_string_from_image(path_to_image, size=45):
+def get_string_from_image(path_to_image, model, size=45):
     result = ''
 
     letters = letters_extract(path_to_image, size)
@@ -71,36 +73,58 @@ def get_string_from_image(path_to_image, size=45):
     for idx, img_data in enumerate(letters):
         result += predict_symbol(
             img_data[2],
-            MODEL
+            model
         ).item()
 
     return result
 
-# Функция для распознавания формулы
-def recognize_formula(image_path, img_size = 45):
-    return get_string_from_image(image_path, img_size)
+def recognize_formula(image_path, model, img_size=45):
+    return get_string_from_image(image_path, model, img_size)
 
-# Хэндлер команды /start
+def get_choosed_model():
+    return MODELS[SELECTED_MODEL]
+
 async def start_handler(message: Message):
-    await message.answer("Привет! Отправь мне фото формулы.")
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text="Выбрать RFC"),
+                KeyboardButton(text="Выбрать SVC"),
+                KeyboardButton(text="Выбрать NB"),
+            ]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+    await message.answer(
+        "Привет! Отправь мне фото формулы. Выберите модель для распознавания:",
+        reply_markup=keyboard
+    )
 
-# Хэндлер для обработки фотографий
+async def model_selection_handler(message: Message):
+    global SELECTED_MODEL
+
+    if message.text == "Выбрать RFC":
+        SELECTED_MODEL = "rfc"
+        await message.answer("Вы выбрали модель RFC.")
+    elif message.text == "Выбрать SVC":
+        SELECTED_MODEL = "svc"
+        await message.answer("Вы выбрали модель SVC.")
+    elif message.text == "Выбрать NB":
+        SELECTED_MODEL = "nb"
+        await message.answer("Вы выбрали модель Наивный Байес.")
+
 async def handle_photo(message: Message, bot: Bot):
-    # Получаем самое большое изображение
     photo = message.photo[-1]
-    # Скачиваем файл
     file = await bot.download(photo)
-    file_path = f"./downloads/{photo.file_id}.jpg"  # Можно поменять путь и название файла
-
+    file_path = f"./downloads/{photo.file_id}.jpg"
 
     try:
-
         with open(file_path, "wb") as f:
             f.write(file.read())
-            # Передаём путь временного файла в функцию распознавания
-            formula = recognize_formula(file_path)
-
-            await message.answer(f"Распознанная формула: {formula}")
+            model = get_choosed_model()
+            formula = recognize_formula(file_path, model)
+            await message.answer(f"Распознанная формула: {formula} (модель: {SELECTED_MODEL.upper()})")
     except Exception as e:
         logging.error(f"Ошибка при обработке изображения: {e}")
         await message.answer("Произошла ошибка при обработке фото.")
@@ -111,22 +135,21 @@ async def handle_photo(message: Message, bot: Bot):
         elif file_path:
             print(f"Файл {file_path} не найден для удаления.")
 
-# Основная асинхронная функция
 async def main():
-    # Инициализация бота и диспетчера
     bot = Bot(token=API_TOKEN)
     dp = Dispatcher()
 
-    # Регистрация хэндлеров
-    dp.message.register(start_handler, Command(commands=["start"]))  # Новый формат
-    dp.message.register(handle_photo, lambda message: message.photo)  # Регистрация обработки фотографий
+    dp.message.register(start_handler, Command(commands=["start"]))
+    dp.message.register(model_selection_handler, lambda message: message.text in ["Выбрать RFC", "Выбрать SVC", "Выбрать NB"])
+    dp.message.register(handle_photo, lambda message: message.photo)
 
-    # Запуск long polling
     try:
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
 
-# Запуск бота
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
